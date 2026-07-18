@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network Packet Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#050807;
+    --bg-1:#0A100D;
+    --bg-2:#0F1712;
+    --bg-3:#16211A;
+    --line:#1E3327;
+    --text-hi:#D8F5E3;
+    --text-mid:#7FA88F;
+    --text-low:#3F5B4A;
+    --teal:#2CF5A0;
+    --teal-dim:#0E3324;
+    --amber:#F0A83C;
+    --amber-dim:#3D2D0F;
+    --red:#E5555A;
+    --red-dim:#3A1518;
+    --blue:#4E9BE0;
+    --blue-dim:#132C3D;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(229,85,90,0.07) 0%, transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(44,245,160,0.07) 0%, transparent 34%),
+      radial-gradient(circle at 15% 92%, rgba(78,155,224,0.07) 0%, transparent 34%),
+      radial-gradient(circle at 90% 90%, rgba(240,168,60,0.06) 0%, transparent 34%),
+      var(--bg-0);
+    background-color:#050807;
+    color:var(--text-hi);
+    font-family:'Inter',sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:56px 20px 80px;
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background-image:
+      linear-gradient(rgba(216,245,227,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(216,245,227,0.025) 1px, transparent 1px);
+    background-size:44px 44px;
+    z-index:0;
+    pointer-events:none;
+    mask-image:radial-gradient(circle at 50% 15%, black 0%, transparent 65%);
+  }
+  .wrap{width:100%;max-width:960px;position:relative;z-index:2;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--text-mid);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    margin-bottom:18px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:6px;height:6px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 0 3px var(--teal-dim);
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:38px;
+    line-height:1.15;
+    margin:0 0 12px;
+    letter-spacing:-0.01em;
+    text-align:center;
+  }
+  .sub{
+    text-align:center;
+    color:var(--text-mid);
+    font-size:14.5px;
+    line-height:1.6;
+    max-width:540px;
+    margin:0 auto 36px;
+  }
+  .stat-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin-bottom:24px;
+  }
+  .stat{
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px 18px;
+  }
+  .stat .label{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--text-low);
+    margin-bottom:8px;
+    font-weight:500;
+  }
+  .stat .value{
+    font-family:'JetBrains Mono',monospace;
+    font-size:22px;
+    font-weight:600;
+    color:var(--text-hi);
+  }
+  .stat.tcp .value{color:var(--blue);}
+  .stat.udp .value{color:var(--amber);}
+  .stat.icmp .value{color:var(--red);}
+  .stat.total .value{color:var(--teal);}
+
+  .panel{
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:24px;
+    margin-bottom:20px;
+    box-shadow:0 12px 32px -20px rgba(0,0,0,0.5);
+  }
+  .panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:16px;
+  }
+  .panel-head h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:17px;
+    font-weight:600;
+    margin:0;
+  }
+  .live-dot{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    color:var(--text-mid);
+  }
+  .live-dot span{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 0 3px var(--teal-dim);
+    animation:pulse 1.6s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+  }
+  thead th{
+    text-align:left;
+    padding:8px 10px;
+    color:var(--text-low);
+    font-weight:500;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    font-size:10.5px;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{
+    padding:9px 10px;
+    border-bottom:1px solid var(--bg-3);
+    color:var(--text-hi);
+    white-space:nowrap;
+  }
+  tbody tr:hover{background:var(--bg-2);}
+  .proto-badge{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:5px;
+    font-size:11px;
+    font-weight:600;
+  }
+  .proto-badge.tcp{background:var(--blue-dim);color:var(--blue);}
+  .proto-badge.udp{background:var(--amber-dim);color:var(--amber);}
+  .proto-badge.icmp{background:var(--red-dim);color:var(--red);}
+  .payload-cell{
+    color:var(--text-mid);
+    max-width:220px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .notice{
+    font-size:12.5px;
+    line-height:1.55;
+    padding:12px 16px;
+    border-radius:10px;
+    background:var(--bg-1);
+    color:var(--text-mid);
+    border:1px solid var(--line);
+    margin-bottom:24px;
+    text-align:center;
+  }
+  .notice strong{color:var(--text-hi);font-weight:600;}
+
+  footer{
+    text-align:center;
+    color:var(--text-low);
+    font-size:12px;
+    margin-top:28px;
+    line-height:1.6;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  @media (max-width:640px){
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    h1{font-size:32px;}
+    table{font-size:11px;}
+    tbody td, thead th{padding:7px 6px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Network Monitoring</div>
+  <h1>Network Packet Analyzer</h1>
+  <p class="sub">A real-time view of network traffic — source and destination addresses, protocol, ports, and payload detail for every packet captured.</p>
+
+  <div class="notice">
+    <strong>Authorized use only</strong> — capture traffic only on networks and devices you own or have explicit permission to monitor.
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat total">
+      <div class="label">Total Packets</div>
+      <div class="value">1,284</div>
+    </div>
+    <div class="stat tcp">
+      <div class="label">TCP</div>
+      <div class="value">842</div>
+    </div>
+    <div class="stat udp">
+      <div class="label">UDP</div>
+      <div class="value">376</div>
+    </div>
+    <div class="stat icmp">
+      <div class="label">ICMP</div>
+      <div class="value">66</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Captured Packets</h2>
+      <div class="live-dot"><span></span>Streaming</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Protocol</th>
+          <th>Source IP</th>
+          <th>Destination IP</th>
+          <th>Ports</th>
+          <th>Length</th>
+          <th>Payload preview</th>
+        </tr>
+      </thead>
+      <tbody id="packet-body">
+      </tbody>
+    </table>
+  </div>
+
+  <footer>Network Packet Analyzer</footer>
+</div>
+
+<script>
+const samplePackets = [
+  {time:'14:02:11', proto:'TCP', src:'192.168.1.24', dst:'93.184.216.34', ports:'51322 → 443', len:1500, payload:'\\x17\\x03\\x03..(TLS encrypted)'},
+  {time:'14:02:11', proto:'UDP', src:'192.168.1.24', dst:'8.8.8.8', ports:'54210 → 53', len:74, payload:'DNS query: example.com'},
+  {time:'14:02:12', proto:'TCP', src:'192.168.1.24', dst:'140.82.112.3', ports:'51410 → 443', len:1500, payload:'\\x16\\x03\\x01..(TLS handshake)'},
+  {time:'14:02:12', proto:'ICMP', src:'192.168.1.1', dst:'192.168.1.24', ports:'N/A', len:64, payload:'Echo reply'},
+  {time:'14:02:13', proto:'TCP', src:'192.168.1.24', dst:'151.101.1.69', ports:'51501 → 80', len:512, payload:'GET /index.html HTTP/1.1'},
+  {time:'14:02:13', proto:'UDP', src:'192.168.1.24', dst:'8.8.4.4', ports:'54211 → 53', len:70, payload:'DNS query: api.github.com'},
+  {time:'14:02:14', proto:'TCP', src:'104.16.85.20', dst:'192.168.1.24', ports:'443 → 51322', len:1460, payload:'\\x17\\x03\\x03..(TLS encrypted)'},
+  {time:'14:02:14', proto:'ICMP', src:'192.168.1.24', dst:'1.1.1.1', ports:'N/A', len:64, payload:'Echo request'},
+  {time:'14:02:15', proto:'TCP', src:'192.168.1.24', dst:'172.217.14.238', ports:'51602 → 443', len:1500, payload:'\\x17\\x03\\x03..(TLS encrypted)'},
+  {time:'14:02:15', proto:'UDP', src:'192.168.1.24', dst:'192.168.1.1', ports:'53201 → 123', len:48, payload:'NTP time sync request'}
+];
+
+const tbody = document.getElementById('packet-body');
+samplePackets.forEach(p => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${p.time}</td>
+    <td><span class="proto-badge ${p.proto.toLowerCase()}">${p.proto}</span></td>
+    <td>${p.src}</td>
+    <td>${p.dst}</td>
+    <td>${p.ports}</td>
+    <td>${p.len}</td>
+    <td class="payload-cell">${p.payload}</td>
+  `;
+  tbody.appendChild(tr);
+});
+</script>
+</body>
+</html>
